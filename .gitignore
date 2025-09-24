@@ -8,7 +8,6 @@ lerna-debug.log*
 .pnpm-debug.log*
 package-lock.json
 bot_sessions
-media
 *.png
 .DS_Store
 bot.qr.png

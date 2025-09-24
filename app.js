@@ -14,6 +14,8 @@ require('dotenv').config();
 const { defaultLogger } = require('./helpers/cloudWatchLogger');
 const express = require("express");
 const { postWhatsappConversation } = require('./services/aws');
+const fs = require('fs');
+const path = require('path');
 const app = express();
 
 const main = async () => {
@@ -40,12 +42,14 @@ const main = async () => {
         const port = process.env.PORT || 3000;
         QRPortalWeb({ port });
 
+        const INSTANCE_ID = process.env.INSTANCE_ID;
+
         defaultLogger.info('API-BOT iniciado', { port });
 
         /**
          * Enviar mensaje con metodos propios del provider del bot
          */
-        app.post("/send-message-bot", async (req, res) => {
+        app.post("/" + INSTANCE_ID + "/send-message-bot", async (req, res) => {
 
             const { phoneNumber, message } = req.body; // Extrae los parámetros del body
 
@@ -91,6 +95,35 @@ const main = async () => {
 
                 console.error("Error al enviar mensaje:", error);
                 res.status(500).send({ error: "Error sending message" });
+            }
+        });
+
+        app.get("/" + INSTANCE_ID + "/get-qr-bot", async (req, res) => {
+            try {
+                // Read the QR code image from the current directory
+                const qrPath = path.join(__dirname, 'bot.qr.png');
+
+                // Check if file exists
+                if (!fs.existsSync(qrPath)) {
+                    throw new Error('QR code image not found');
+                }
+
+                // Read the file and set proper headers for image display
+                const qrImage = fs.readFileSync(qrPath);
+                
+                // Set response headers for PNG image
+                res.setHeader('Content-Type', 'image/png');
+                res.setHeader('Content-Length', qrImage.length);
+                
+                // Send the image directly
+                res.send(qrImage);
+
+            } catch (error) {
+                defaultLogger.error('Error reading QR code image', {
+                    error: error.message,
+                    path: qrPath
+                });
+                res.status(500).send({ error: "Error reading QR code image" });
             }
         });
 
