@@ -5,10 +5,7 @@ const BaileysProvider = require('@bot-whatsapp/provider/baileys');
 const MockAdapter = require('@bot-whatsapp/database/mock');
 const { voice } = require('./flow/voice');
 const { media } = require('./flow/media');
-const { menu } = require('./flow/menu');
 const { chatbot } = require('./flow/chatbot');
-const { vendor } = require('./flow/vendor');
-const { welcome } = require('./flow/welcome');
 require('dotenv').config();
 // ... existing code ...
 const { defaultLogger } = require('./helpers/cloudWatchLogger');
@@ -27,7 +24,7 @@ const main = async () => {
         // Inicializar adaptadores
         const adapterDB = new MockAdapter();
         const adapterFlow = createFlow([
-            chatbot
+            chatbot, voice, media
         ]);
         const adapterProvider = createProvider(BaileysProvider);
 
@@ -49,7 +46,20 @@ const main = async () => {
         /**
          * Enviar mensaje con metodos propios del provider del bot
          */
+        // Simple in-memory rate-limit store: maps IP → timestamp of last request
+        const lastRequestByIp = new Map();
+
         app.post("/" + INSTANCE_ID + "/send-message-bot", async (req, res) => {
+            const clientIp = req.ip || req.connection.remoteAddress;
+
+            // Rate-limit check: 1 request per IP every 3 seconds
+            const now = Date.now();
+            const lastRequest = lastRequestByIp.get(clientIp);
+            if (lastRequest && (now - lastRequest) < 500) {
+                defaultLogger.warn('Rate-limit exceeded', { clientIp });
+                return res.status(429).send({ error: 'Too many requests. Please wait 500 milliseconds before retrying.' });
+            }
+            lastRequestByIp.set(clientIp, now);
 
             const { phoneNumber, message } = req.body; // Extrae los parámetros del body
 

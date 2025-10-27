@@ -167,7 +167,7 @@ const handlerAI = async (ctx, phone) => {
 
         await fs.writeFileSync(pathTmpOgg, buffer);
         await convertOggMp3(pathTmpOgg, pathTmpMp3, userId, numberPhone, name);
-        const text = await voiceToText(pathTmpMp3, userId, numberPhone, name);
+        const base64 = fs.readFileSync(pathTmpMp3, { encoding: 'base64' });
 
         fs.unlink(pathTmpMp3, (error) => {
             if (error) {
@@ -195,7 +195,7 @@ const handlerAI = async (ctx, phone) => {
             }
         });
 
-        return text;
+        return base64;
     } catch (err) {
         defaultLogger.error('Error en procesamiento de nota de voz', {
             userId,
